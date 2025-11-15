@@ -18,5 +18,4 @@ import routes
 app.logger.info("Power Grid Analysis App initialized successfully")
 action_logger.log_action("APP_INITIALIZATION", "Power Grid Analysis App started")
 
-if __name__ == "__main__":
-    app.run(debug=True)
+# ❗ No app.run() here!
