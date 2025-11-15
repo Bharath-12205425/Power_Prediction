@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Network Visualization - Power Grid Analysis{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+<!-- Alert Container for notifications -->
+<div id="alertContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 1050;"></div>
+
+<div class="row">
+    <div class="col-12">
+        <h1 class="h3 mb-4">
+            <i class="fas fa-project-diagram"></i>
+            Network Visualization
+        </h1>
+        <p class="text-muted">Interactive visualization of power grid topology and connections</p>
+    </div>
+</div>
+
+<!-- Controls -->
+<div class="row mb-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Visualization Controls</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label for="layoutSelect" class="form-label">Layout</label>
+                        <select id="layoutSelect" class="form-select">
+                            <option value="force">Force Directed</option>
+                            <option value="circular">Circular</option>
+                            <option value="hierarchical">Hierarchical</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label for="colorBy" class="form-label">Color Nodes By</label>
+                        <select id="colorBy" class="form-select">
+                            <option value="building_type">Building Type</option>
+                            <option value="risk_level">Risk Level</option>
+                            <option value="gnn_risk">GNN Predicted Risk</option>
+                            <option value="status">Status</option>
+                            <option value="centrality">Centrality</option>
+                            <option value="capacity">Capacity</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label for="nodeSize" class="form-label">Node Size By</label>
+                        <select id="nodeSize" class="form-select">
+                            <option value="degree">Connection Degree</option>
+                            <option value="capacity">Capacity</option>
+                            <option value="centrality">Centrality</option>
+                            <option value="uniform">Uniform</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <button id="resetZoom" class="btn btn-primary w-100">
+                            <i class="bi bi-zoom-out"></i> Reset Zoom
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Network Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <h4 class="text-primary mb-0" id="nodeCount">0</h4>
+                        <small class="text-muted">Nodes</small>
+                    </div>
+                    <div class="col-4">
+                        <h4 class="text-info mb-0" id="edgeCount">0</h4>
+                        <small class="text-muted">Connections</small>
+                    </div>
+                    <div class="col-4">
+                        <h4 class="text-warning mb-0" id="networkDensity">0.000</h4>
+                        <small class="text-muted">Density</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Network Graph -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Network Graph</h5>
+                <div>
+                    <button id="exportSVG" class="btn btn-outline-secondary btn-sm me-2">
+                        <i class="bi bi-download"></i> Export
+                    </button>
+                    <button id="refreshNetwork" class="btn btn-primary btn-sm">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div id="networkContainer" style="height: 600px; position: relative; overflow: hidden;">
+                    <svg id="networkSvg" width="100%" height="100%"></svg>
+                    <div id="networkLoading" class="position-absolute top-50 start-50 translate-middle text-center" style="display: none;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading network data...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Node Details and Legend -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Node Details</h5>
+            </div>
+            <div class="card-body">
+                <div id="nodeDetails">
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-diagram-2 display-1 mb-3" style="opacity: 0.3;"></i>
+                        <p>Click on a node in the network to see its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Legend</h5>
+            </div>
+            <div class="card-body">
+                <div id="networkLegend">
+                    <p class="text-muted">Select a coloring option to see the legend</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tooltip -->
+<div id="tooltip" class="tooltip" style="opacity: 0; position: absolute; pointer-events: none; z-index: 1000;">
+    <div class="tooltip-inner"></div>
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/network.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Power Grid Analysis{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Dashboard Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-2">
+                <i class="fas fa-tachometer-alt text-primary me-2"></i>
+                Real-Time Dashboard
+            </h1>
+            <p class="text-muted">Monitor power grid status and performance metrics in real-time</p>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 bg-gradient-primary h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-white-50 mb-1">Total Nodes</p>
+                            <h2 class="mb-0">{{ stats.total_nodes or 0 }}</h2>
+                        </div>
+                        <div>
+                            <i class="fas fa-sitemap fa-3x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 bg-gradient-success h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-white-50 mb-1">Operational</p>
+                            <h2 class="mb-0">{{ stats.operational_nodes or 0 }}</h2>
+                        </div>
+                        <div>
+                            <i class="fas fa-check-circle fa-3x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 bg-gradient-warning h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-white-50 mb-1">At Risk</p>
+                            <h2 class="mb-0">{{ stats.at_risk_nodes or 0 }}</h2>
+                        </div>
+                        <div>
+                            <i class="fas fa-exclamation-triangle fa-3x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 bg-gradient-danger h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-white-50 mb-1">Failed</p>
+                            <h2 class="mb-0">{{ stats.failed_nodes or 0 }}</h2>
+                        </div>
+                        <div>
+                            <i class="fas fa-times-circle fa-3x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-lg-8 mb-3">
+            <div class="card border-0 bg-dark h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-area text-primary me-2"></i>
+                        Network Health Over Time
+                    </h5>
+                    <button class="btn btn-sm btn-outline-primary" onclick="refreshDashboard()">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                <div class="card-body">
+                    <canvas id="networkHealthChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mb-3">
+            <div class="card border-0 bg-dark h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-pie text-info me-2"></i>
+                        Node Status Distribution
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="statusDistributionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Node List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 bg-dark">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list text-warning me-2"></i>
+                        Critical Nodes
+                    </h5>
+                    <div>
+                        <a href="{{ url_for('predictions') }}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-chart-line me-1"></i>Make Prediction
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if nodes and nodes|length > 0 %}
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Node ID</th>
+                                    <th>Building Type</th>
+                                    <th>Status</th>
+                                    <th>Risk Score</th>
+                                    <th>Capacity (kWh)</th>
+                                    <th>Last Maintenance</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for node in nodes %}
+                                <tr>
+                                    <td><code>{{ node.node_id }}</code></td>
+                                    <td>{{ node.building_type }}</td>
+                                    <td>
+                                        {% if node.status == 'operational' %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle me-1"></i>Operational
+                                        </span>
+                                        {% elif node.status == 'at_risk' %}
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>At Risk
+                                        </span>
+                                        {% elif node.status == 'failed' %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-times-circle me-1"></i>Failed
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-question-circle me-1"></i>Unknown
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if node.current_risk_score %}
+                                        <span class="{% if node.current_risk_score > 0.7 %}text-danger{% elif node.current_risk_score > 0.4 %}text-warning{% else %}text-success{% endif %}">
+                                            {{ "%.3f"|format(node.current_risk_score) }}
+                                        </span>
+                                        {% else %}
+                                        <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ node.max_capacity_kwh or 'N/A' }}</td>
+                                    <td>
+                                        {% if node.last_maintenance_days is not none %}
+                                        {{ node.last_maintenance_days }} days ago
+                                        {% else %}
+                                        <span class="text-muted">Never</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="viewNodeDetails('{{ node.node_id }}')">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-inbox fa-3x mb-3 opacity-50"></i>
+                        <p>No critical nodes to display</p>
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+                            Load Sample Data
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Initialize dashboard charts
+function initializeDashboard() {
+    // Status Distribution Chart
+    const statusCtx = document.getElementById('statusDistributionChart');
+    if (statusCtx) {
+        new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Operational', 'At Risk', 'Failed', 'Unknown'],
+                datasets: [{
+                    data: [
+                        {{ stats.operational_nodes or 0 }},
+                        {{ stats.at_risk_nodes or 0 }},
+                        {{ stats.failed_nodes or 0 }},
+                        {{ stats.total_nodes or 0 }} - {{ stats.operational_nodes or 0 }} - {{ stats.at_risk_nodes or 0 }} - {{ stats.failed_nodes or 0 }}
+                    ],
+                    backgroundColor: [
+                        'rgba(25, 135, 84, 0.8)',
+                        'rgba(255, 193, 7, 0.8)',
+                        'rgba(220, 53, 69, 0.8)',
+                        'rgba(108, 117, 125, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(25, 135, 84, 1)',
+                        'rgba(255, 193, 7, 1)',
+                        'rgba(220, 53, 69, 1)',
+                        'rgba(108, 117, 125, 1)'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#fff'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Network Health Chart (placeholder with sample data)
+    const healthCtx = document.getElementById('networkHealthChart');
+    if (healthCtx) {
+        new Chart(healthCtx, {
+            type: 'line',
+            data: {
+                labels: ['6h ago', '5h ago', '4h ago', '3h ago', '2h ago', '1h ago', 'Now'],
+                datasets: [{
+                    label: 'Operational Nodes',
+                    data: [45, 46, 44, 47, 46, 48, {{ stats.operational_nodes or 0 }}],
+                    borderColor: 'rgba(25, 135, 84, 1)',
+                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }, {
+                    label: 'At Risk Nodes',
+                    data: [3, 2, 4, 2, 3, 2, {{ stats.at_risk_nodes or 0 }}],
+                    borderColor: 'rgba(255, 193, 7, 1)',
+                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#fff'
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: '#fff'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: '#fff'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+function refreshDashboard() {
+    location.reload();
+}
+
+function viewNodeDetails(nodeId) {
+    window.location.href = `/predictions?node=${nodeId}`;
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', initializeDashboard);
+</script>
+{% endblock %}
