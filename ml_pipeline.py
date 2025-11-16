@@ -35,13 +35,13 @@ class MLPipeline:
                     self.tuning_config = json.load(cfg_f)
             else:
                 self.tuning_config = {
-                    'n_iter': 8,
+                    'n_iter': 3,
                     'cv': 2,
-                    'n_jobs': -1,
+                    'n_jobs': 1,
                     'random_state': 42
                 }
         except Exception:
-            self.tuning_config = {'n_iter': 8, 'cv': 2, 'n_jobs': -1, 'random_state': 42}
+            self.tuning_config = {'n_iter': 3, 'cv': 2, 'n_jobs': 1, 'random_state': 42}
     
     def initialize_models(self):
         """Initialize and train ML models"""
@@ -100,8 +100,8 @@ class MLPipeline:
                     }
                     data.append(features)
             
-            # Create synthetic data to have enough samples
-            synthetic_data = self._generate_synthetic_data(len(data) * 10)
+            # Create synthetic data to have enough samples (reduced for memory optimization)
+            synthetic_data = self._generate_synthetic_data(min(500, len(data) * 5))
             data.extend(synthetic_data)
             
             df = pd.DataFrame(data)
@@ -111,8 +111,8 @@ class MLPipeline:
             self.logger.error(f"Error creating training data: {e}")
             return None
     
-    def _generate_synthetic_data(self, n_samples=1000):
-        """Generate synthetic training data for better model training"""
+    def _generate_synthetic_data(self, n_samples=500):
+        """Generate synthetic training data for better model training (memory optimized)"""
         np.random.seed(42)
         data = []
         
@@ -184,16 +184,16 @@ class MLPipeline:
             X_train_scaled = self.scaler.fit_transform(X_train)
             X_test_scaled = self.scaler.transform(X_test)
             
-            # Train models
+            # Train models (reduced complexity for memory optimization)
             models_config = {
-                'RandomForest': RandomForestClassifier(n_estimators=100, random_state=42, max_depth=10),
-                'XGBoost': xgb.XGBClassifier(n_estimators=100, random_state=42, max_depth=6)
+                'RandomForest': RandomForestClassifier(n_estimators=50, random_state=42, max_depth=8),
+                'XGBoost': xgb.XGBClassifier(n_estimators=50, random_state=42, max_depth=5, tree_method='hist')
             }
             
-            # Try to add LightGBM if available
+            # Try to add LightGBM if available (memory optimized)
             try:
                 import lightgbm as lgb
-                models_config['LightGBM'] = lgb.LGBMClassifier(n_estimators=100, random_state=42, max_depth=6, verbose=-1)
+                models_config['LightGBM'] = lgb.LGBMClassifier(n_estimators=50, random_state=42, max_depth=5, verbose=-1, force_col_wise=True)
                 global LIGHTGBM_AVAILABLE
                 LIGHTGBM_AVAILABLE = True
             except ImportError:
@@ -206,11 +206,11 @@ class MLPipeline:
                         # Perform a lightweight hyperparameter search for RandomForest
                         try:
                             param_dist = self.tuning_config.get('rf_param_dist', {
-                                'n_estimators': [100, 200, 500],
-                                'max_depth': [None, 10, 20, 30],
-                                'min_samples_split': [2, 5, 10],
-                                'min_samples_leaf': [1, 2, 4],
-                                'max_features': ['sqrt', 'log2', None]
+                                'n_estimators': [30, 50],
+                                'max_depth': [6, 8, 10],
+                                'min_samples_split': [2, 5],
+                                'min_samples_leaf': [1, 2],
+                                'max_features': ['sqrt', 'log2']
                             })
                             rs = RandomizedSearchCV(
                                 model,
@@ -235,11 +235,11 @@ class MLPipeline:
                         if model_name == 'XGBoost':
                             try:
                                 param_dist_xgb = self.tuning_config.get('xgb_param_dist', {
-                                    'n_estimators': [50, 100, 200],
-                                    'max_depth': [3, 6, 10],
-                                    'learning_rate': [0.01, 0.1, 0.2],
-                                    'subsample': [0.6, 0.8, 1.0],
-                                    'colsample_bytree': [0.6, 0.8, 1.0]
+                                    'n_estimators': [30, 50],
+                                    'max_depth': [3, 5],
+                                    'learning_rate': [0.1, 0.2],
+                                    'subsample': [0.8],
+                                    'colsample_bytree': [0.8]
                                 })
                                 rs_xgb = RandomizedSearchCV(
                                     model,
@@ -259,11 +259,11 @@ class MLPipeline:
                         elif model_name == 'LightGBM':
                             try:
                                 param_dist_lgb = self.tuning_config.get('lgb_param_dist', {
-                                    'n_estimators': [50, 100, 200],
-                                    'max_depth': [-1, 6, 10],
-                                    'learning_rate': [0.01, 0.1, 0.2],
-                                    'num_leaves': [31, 63, 127],
-                                    'subsample': [0.6, 0.8, 1.0]
+                                    'n_estimators': [30, 50],
+                                    'max_depth': [5, 6],
+                                    'learning_rate': [0.1, 0.2],
+                                    'num_leaves': [31],
+                                    'subsample': [0.8]
                                 })
                                 rs_lgb = RandomizedSearchCV(
                                     model,
